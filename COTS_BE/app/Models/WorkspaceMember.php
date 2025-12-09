@@ -16,6 +16,8 @@ class WorkspaceMember extends Model
         'joined_at',
     ];
 
+    public $timestamps = false;
+
     // Quan hệ với Workspace
     public function workspace()
     {

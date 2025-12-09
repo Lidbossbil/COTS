@@ -8,7 +8,7 @@
       <div v-if="showTodo" class="col-12 col-md-4 h-100 d-flex flex-column mb-3">
         <div class="card shadow-sm rounded-lg flex-grow-1">
           <div class="card-header bg-white d-flex justify-content-between align-items-center rounded-top">
-           <strong class="text-primary"><i class="fa-solid fa-thumbtack text-danger"></i> To-Do List</strong>
+            <strong class="text-primary"><i class="fa-solid fa-thumbtack text-danger"></i> To-Do List</strong>
             <button class="btn btn-sm btn-outline-secondary" @click="showTodo = false">Ẩn</button>
           </div>
 
@@ -18,26 +18,26 @@
               <button class="btn btn-success" @click="addTask">Thêm</button>
             </div>
 
-            <draggable v-model="todoTasks" group="tasks" item-key="id" class="flex-grow-1">
+            <draggable v-model="todoTasks" group="tasks" item-key="id" class="flex-grow-1"
+              @end="saveTaskToDB(null, $event.draggedContext.element, null)">
               <template #item="{ element }">
                 <div class="task-item d-flex justify-content-between align-items-center shadow-sm">
                   <span>{{ element.text }}</span>
 
                   <div class="dropdown" @click.stop>
-                    <button class="btn btn-sm btn-light border" type="button" @click.stop="toggleDropdown(element. id)">
+                    <button class="btn btn-sm btn-light border" type="button" @click.stop="toggleDropdown(element.id)">
                       ⋮
                     </button>
 
                     <div v-if="dropdownOpen === element.id" class="dropdown-menu show custom-dropdown">
                       <button class="dropdown-item" @click="assignTask(element)">Giao</button>
                       <button class="dropdown-item" @click="setTime(element)">Thời gian</button>
-                      <button class="dropdown-item text-danger" @click="deleteTask(element)">Xóa</button>
+                      <button class="dropdown-item text-danger" @click="deleteTask(board, element)">Xóa</button>
                     </div>
                   </div>
                 </div>
               </template>
             </draggable>
-
           </div>
         </div>
       </div>
@@ -46,33 +46,35 @@
       <div v-if="showBoard" class="col h-100 d-flex flex-column">
         <div class="card shadow-sm rounded-lg flex-grow-1">
           <div class="card-header bg-white d-flex justify-content-between align-items-center rounded-top">
-            <strong class="text-primary"><i class="fa-solid fa-rectangle-list text-warning"></i> Board phân chia công việc</strong>
+            <strong class="text-primary"><i class="fa-solid fa-rectangle-list text-warning"></i> Board phân chia công
+              việc</strong>
             <button class="btn btn-sm btn-outline-secondary" @click="showBoard = false">Ẩn</button>
           </div>
 
           <div class="card-body">
             <div class="row h-100 g-2">
-
-              <!-- CỘT BACKLOG -->
-              <div class="col-12 col-md-4 d-flex flex-column">
+              <div v-for="board in boards" :key="board.id" class="col-12 col-md-4 d-flex flex-column">
                 <div class="board-column backlog-border">
-                  <h6 class="column-title">📥 Chưa làm</h6>
+                  <h6 class="column-title">{{ board.name }}</h6>
                   <div class="input-group mb-2">
-                    <input v-model="newBacklog" type="text" class="form-control" placeholder="Thêm thẻ mới...">
-                    <button class="btn btn-outline-primary" @click="addBacklog">+</button>
+                    <input v-model="board.newTask" type="text" class="form-control" placeholder="Thêm thẻ mới...">
+                    <button class="btn btn-outline-primary" @click="addTaskToBoard(board)">+</button>
                   </div>
-
-                  <draggable v-model="backlog" group="tasks" item-key="id" class="flex-grow-1">
+                  <draggable v-model="board.tasks" group="tasks" item-key="id" class="flex-grow-1"
+                    @end="saveTaskToDB(board, $event.draggedContext.element, board.id)">
                     <template #item="{ element }">
                       <div class="task-item shadow-sm">
                         <span>{{ element.text }}</span>
                         <div class="dropdown" @click.stop>
-                          <button class="btn btn-sm btn-light border" @click.stop="toggleDropdown(element. id)">⋮</button>
+                          <button class="btn btn-sm btn-light border" type="button"
+                            @click.stop="toggleDropdown(element.id)">
+                            ⋮
+                          </button>
 
                           <div v-if="dropdownOpen === element.id" class="dropdown-menu show custom-dropdown">
                             <button class="dropdown-item" @click="assignTask(element)">Giao</button>
                             <button class="dropdown-item" @click="setTime(element)">Thời gian</button>
-                            <button class="dropdown-item text-danger" @click="deleteTask(element)">Xóa</button>
+                            <button class="dropdown-item text-danger" @click="deleteTask(board, element)">Xóa</button>
                           </div>
                         </div>
                       </div>
@@ -80,70 +82,11 @@
                   </draggable>
                 </div>
               </div>
-
-              <!-- CỘT ĐANG LÀM -->
-              <div class="col-12 col-md-4 d-flex flex-column">
-                <div class="board-column doing-border">
-                  <h6 class="column-title">⚙️ Đang làm</h6>
-                  <div class="input-group mb-2">
-                    <input v-model="newDoing" type="text" class="form-control" placeholder="Thêm thẻ mới...">
-                    <button class="btn btn-outline-primary" @click="addDoing">+</button>
-                  </div>
-
-                  <draggable v-model="doing" group="tasks" item-key="id" class="flex-grow-1">
-                    <template #item="{ element }">
-                      <div class="task-item shadow-sm">
-                        <span>{{ element.text }}</span>
-                        <div class="dropdown" @click.stop>
-                          <button class="btn btn-sm btn-light border" @click.stop="toggleDropdown(element. id)">⋮</button>
-
-                          <div v-if="dropdownOpen === element. id" class="dropdown-menu show custom-dropdown">
-                            <button class="dropdown-item" @click="assignTask(element)">Giao</button>
-                            <button class="dropdown-item" @click="setTime(element)">Thời gian</button>
-                            <button class="dropdown-item text-danger" @click="deleteTask(element)">Xóa</button>
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                  </draggable>
-                </div>
-              </div>
-
-              <!-- CỘT HOÀN THÀNH -->
-              <div class="col-12 col-md-4 d-flex flex-column">
-                <div class="board-column done-border">
-                  <h6 class="column-title">✅ Hoàn thành</h6>
-                  <div class="input-group mb-2">
-                    <input v-model="newDone" type="text" class="form-control" placeholder="Thêm thẻ mới...">
-                    <button class="btn btn-outline-primary" @click="addDone">+</button>
-                  </div>
-
-                  <draggable v-model="done" group="tasks" item-key="id" class="flex-grow-1">
-                    <template #item="{ element }">
-                      <div class="task-item shadow-sm">
-                        <span>{{ element.text }}</span>
-                        <div class="dropdown" @click.stop>
-                          <button class="btn btn-sm btn-light border" @click.stop="toggleDropdown(element. id)">⋮</button>
-
-                          <div v-if="dropdownOpen === element. id" class="dropdown-menu show custom-dropdown">
-                            <button class="dropdown-item" @click="assignTask(element)">Giao</button>
-                            <button class="dropdown-item" @click="setTime(element)">Thời gian</button>
-                            <button class="dropdown-item text-danger" @click="deleteTask(element)">Xóa</button>
-                          </div>
-                        </div>
-                      </div>
-                    </template>
-                  </draggable>
-                </div>
-              </div>
-
             </div>
           </div>
         </div>
       </div>
-
     </div>
-
     <!-- NÚT ĐIỀU KHIỂN -->
     <div class="text-center pb-3">
       <button class="btn btn-warning px-4 me-2 toggle-btn mr-2 text-light" @click.stop="showTodo = !showTodo">
@@ -153,89 +96,125 @@
         Board
       </button>
     </div>
-
   </div>
 </template>
 
 <script>
+import axios from 'axios';
 import draggable from 'vuedraggable';
+
 export default {
-  components: {
-    draggable,
-  },
+  components: { draggable },
   data() {
     return {
       showTodo: true,
       showBoard: true,
-      newTask: '',
-      newBacklog: '',
-      newDoing: '',
-      newDone: '',
+      boards: [], // danh sách board con
+      workspaceId: null,
       dropdownOpen: null,
-      todoTasks: [
-        { id: 1, text: 'Viết tài liệu dự án' },
-        { id: 2, text: 'Kiểm tra lỗi giao diện' },
-        { id: 3, text: 'Chuẩn bị báo cáo tuần' },
-      ],
-      backlog: [
-        { id: 4, text: 'Thiết kế database' },
-        { id: 5, text: 'Tạo wireframe' },
-      ],
-      doing: [
-        { id: 6, text: 'Phát triển API' },
-      ],
-      done: [
-        { id: 7, text: 'Cài đặt môi trường' },
-      ],
+
+      // dữ liệu cho To-Do List
+      newTask: '',
+      todoTasks: []
     };
   },
+  mounted() {
+    this.workspaceId = this.$route.query.workspace_id || 1;
+    this.loadBoards();
+  },
   methods: {
+    async loadBoards() {
+      try {
+        const res = await axios.get('http://127.0.0.1:8000/api/task/get-data', {
+          params: { workspace_id: this.workspaceId },
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('token_client') }
+        });
+        if (res.data.status) {
+          this.boards = res.data.data.map(board => ({
+            id: board.id,
+            name: board.name,
+            tasks: board.tasks.map(t => ({ id: t.id, text: t.title })),
+            newTask: '' // mỗi board có input riêng
+          }));
+        } else {
+          this.$toast.error(res.data.message);
+        }
+      } catch {
+        this.$toast.error('Lỗi khi tải dữ liệu');
+      }
+    },
+
+    // To-Do List
     addTask() {
-      if (this.newTask.trim()) {
-        this.todoTasks.push({ id: Date.now(), text: this.newTask });
+      if (this.newTask && this.newTask.trim()) {
+        this.todoTasks.push({
+          id: Date.now(),
+          text: this.newTask
+        });
         this.newTask = '';
       }
     },
-    addBacklog() {
-      if (this. newBacklog.trim()) {
-        this.backlog.push({ id: Date.now(), text: this.newBacklog });
-        this.newBacklog = '';
+
+    // Board
+    addTaskToBoard(board) {
+      if (board.newTask && board.newTask.trim()) {
+        board.tasks.push({
+          id: Date.now(),
+          text: board.newTask
+        });
+        board.newTask = '';
       }
     },
-    addDoing() {
-      if (this.newDoing.trim()) {
-        this.doing.push({ id: Date.now(), text: this.newDoing });
-        this.newDoing = '';
+
+    async saveTaskToDB(board, task, statusId) {
+      try {
+        const payload = {
+          title: task.text,
+          board_id: board ? board.id : null,
+          status_id: statusId
+        };
+        const res = await axios.post('http://127.0.0.1:8000/api/task/add-data', payload, {
+          headers: { Authorization: 'Bearer ' + localStorage.getItem('token_client') }
+        });
+
+        if (res.data.status) {
+          this.$toast.success(res.data.message);
+          task.id = res.data.data.id; // cập nhật id thật từ DB
+        } else {
+          this.$toast.error(res.data.message);
+        }
+      } catch {
+        this.$toast.error('Lỗi khi lưu task');
       }
     },
-    addDone() {
-      if (this.newDone.trim()) {
-        this.done. push({ id: Date.now(), text: this.newDone });
-        this.newDone = '';
+
+    deleteTask(boardOrItem, item) {
+      if (item) {
+        boardOrItem.tasks = boardOrItem.tasks.filter(t => t.id !== item.id);
+      } else {
+        const task = boardOrItem;
+        this.todoTasks = this.todoTasks.filter(t => t.id !== task.id);
       }
-    },
-    assignTask(item) {
-      alert(`Assign task: ${item.text}`);
       this.closeDropdown();
     },
-    setTime(item) {
-      alert(`Set time for: ${item.text}`);
-      this.closeDropdown();
-    },
-    deleteTask(item) {
-      this.todoTasks = this.todoTasks.filter(t => t.id !== item.id);
-      this.backlog = this.backlog.filter(t => t.id !== item.id);
-      this.doing = this.doing.filter(t => t.id !== item.id);
-      this.done = this.done.filter(t => t.id !== item.id);
-      this.closeDropdown();
-    },
+
     toggleDropdown(id) {
       this.dropdownOpen = this.dropdownOpen === id ? null : id;
     },
     closeDropdown() {
       this.dropdownOpen = null;
     },
-  },
+    assignTask(item) { alert(`Assign task: ${item.text}`); this.closeDropdown(); },
+    setTime(item) { alert(`Set time for: ${item.text}`); this.closeDropdown(); },
+    deleteTask(board, item) {
+      if (board) {
+        board.tasks = board.tasks.filter(t => t.id !== item.id);
+      } else {
+        this.todoTasks = this.todoTasks.filter(t => t.id !== item.id);
+      }
+      this.closeDropdown();
+    }
+  }
 };
 </script>
 
@@ -243,6 +222,7 @@ export default {
 .dropdown-menu {
   z-index: 1050;
 }
+
 .board-column {
   background: #ffffff;
   border-radius: 12px;
@@ -251,9 +231,17 @@ export default {
   border: 2px solid transparent;
 }
 
-.backlog-border { border-color: #d0d7ff; }
-.doing-border { border-color: #ffe5a3; }
-.done-border { border-color: #b7f7c2; }
+.backlog-border {
+  border-color: #d0d7ff;
+}
+
+.doing-border {
+  border-color: #ffe5a3;
+}
+
+.done-border {
+  border-color: #b7f7c2;
+}
 
 .column-title {
   font-weight: bold;
@@ -274,7 +262,7 @@ export default {
 }
 
 .custom-dropdown {
-  box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
   border-radius: 8px;
 }
 
