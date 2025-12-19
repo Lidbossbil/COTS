@@ -33,15 +33,15 @@
 
           <li>
             <router-link to="/dashboard" class="iq-waves-effect">
-              <i class="ri-home-4-line"></i>
+              <i class="fa-regular fa-folder-closed"></i>
               <span>Dashboard</span>
             </router-link>
           </li>
 
           <li>
-            <router-link to="/project" class="iq-waves-effect">
+            <router-link :to="latestWorkspaceLink" class="iq-waves-effect">
               <i class="fa-regular fa-folder-closed"></i>
-              <span>Project</span>
+              <span>Workspace</span>
             </router-link>
           </li>
 
@@ -77,9 +77,15 @@
 </template>
 
 <script>
-export default {};
+export default {
+  computed: {
+    latestWorkspaceLink() {
+      const id = localStorage.getItem('latestWorkspaceId');
+      if (!id) return '/dashboard'; 
+      return { name: 'WorkspaceTasks', params: { workspace_id: id } };
+    }
+  }
+};
 </script>
 
-<style>
-
-</style>
+<style></style>

@@ -11,11 +11,6 @@ const routes = [
     meta: { layout: "default" },
   },
   {
-    path: "/project",
-    component: () => import("../components/Client/Project/index.vue"),
-    meta: { layout: "default" },
-  },
-  {
     path: "/dang-nhap",
     component: () => import("../components/DangNhap/index.vue"),
     meta: { layout: "blank-layout" },
@@ -24,6 +19,13 @@ const routes = [
     path: "/teamanager",
     component: () => import("../components/Client/Teamanager/index.vue"),
     meta: { layout: "default" },
+  },
+  {
+    path: '/workspace/:workspace_id',
+    name: 'WorkspaceTasks',
+    component: () => import('../components/Client/Project/index.vue'),
+    meta: { layout: "default" },
+    props: true
   },
 ];
 

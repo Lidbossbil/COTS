@@ -35,6 +35,8 @@ Route::prefix('task')->group(function () {
     Route::get('/get-data', [TaskController::class, 'getData']);
     Route::post('/add-data', [TaskController::class, 'addData']);
     Route::put('/update', [TaskController::class, 'update']);
+    Route::put('/move', [TaskController::class, 'move']);
     Route::post('/delete', [TaskController::class, 'destroy']);
 });
 
+Route::post('/board/add', [TaskController::class, 'addBoard']);

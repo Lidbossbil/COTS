@@ -1,15 +1,17 @@
 <template>
     <div class="container py-4">
+        <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
             <div>
-                <h2 class="fw-bold">Welcome back, Viet Nguyen Quoc</h2>
+                <h2 class="fw-bold">Welcome back, {{ username }}</h2>
                 <p class="text-muted">Here's what's happening with your workspaces today</p>
             </div>
-
             <button class="btn btn-primary btn-lg" data-toggle="modal" data-target="#newProjectModal">
                 <i class="bi bi-plus-lg"></i> New Workspace
             </button>
         </div>
+
+        <!-- Stats -->
         <div class="row g-3 mb-4">
             <div class="col-md-3">
                 <div class="card p-3 shadow-sm border-0 h-100">
@@ -68,6 +70,8 @@
                 </div>
             </div>
         </div>
+
+        <!-- Workspace Overview -->
         <div class="row g-3">
             <div class="col-md-8">
                 <div class="card p-3 shadow-sm border-0">
@@ -75,7 +79,6 @@
                         <h5 class="fw-semibold m-0"><b>Workspace Overview</b></h5>
                         <a href="#" class="text-decoration-none fw-semibold">View all →</a>
                     </div>
-
                     <hr>
 
                     <div v-if="workspaces.length === 0" class="text-center py-5">
@@ -83,30 +86,37 @@
                             <i class="fa-solid fa-folder-plus fa-4x"></i>
                         </div>
                         <p class="text-muted">No Workspace yet</p>
-                        <button class="btn btn-primary" data-toggle="modal" data-target="#newProjectModal">Create your
-                            First Workspace</button>
+                        <button class="btn btn-primary" data-toggle="modal" data-target="#newProjectModal">
+                            Create your First Workspace
+                        </button>
                     </div>
 
-                    <div v-else class="workspace-list">
-                        <div v-for="workspace in workspaces" :key="workspace.id"
-                            class="workspace-item p-3 border-bottom">
-                            <div class="d-flex justify-content-between align-items-center">
-                                <div>
-                                    <h6 class="fw-bold mb-1">{{ workspace.name }}</h6>
-                                    <p class="text-muted small mb-0">{{ workspace.description }}</p>
-                                </div>
-                                <div>
-                                    <button class="btn btn-sm btn-outline-secondary" @click="showEditModal(workspace)"
-                                        data-toggle="modal" data-target="#newProjectModal">Edit</button>
-                                    <button class="btn btn-sm btn-outline-danger"
-                                        @click="removeWorkspace(workspace.id)">Delete</button>
-                                </div>
+                    <div v-for="workspace in workspaces" :key="workspace.id"
+                        class="workspace-item d-flex justify-content-between align-items-center p-2 border-bottom">
+
+                        <router-link :to="{ name: 'WorkspaceTasks', params: { workspace_id: workspace.id } }"
+                            class="text-decoration-none text-dark flex-grow-1">
+                            <div>
+                                <h6 class="fw-bold mb-1">{{ workspace.name }}</h6>
+                                <p class="text-muted small mb-0">{{ workspace.description }}</p>
                             </div>
+                        </router-link>
+
+                        <div class="btn-group ms-3">
+                            <button class="btn btn-sm btn-outline-secondary" @click="showEditModal(workspace)"
+                                data-toggle="modal" data-target="#newProjectModal">
+                                Edit
+                            </button>
+                            <button class="btn btn-sm btn-outline-danger" @click="removeWorkspace(workspace.id)">
+                                Delete
+                            </button>
                         </div>
                     </div>
+
                 </div>
             </div>
 
+            <!-- Sidebar -->
             <div class="col-md-4">
                 <div class="card p-3 shadow-sm border-0 mb-3">
                     <div class="d-flex justify-content-between align-items-center">
@@ -167,6 +177,7 @@
             </div>
         </div>
 
+        <!-- Modal -->
         <div class="modal fade" id="newProjectModal" tabindex="-1" aria-labelledby="newProjectModalLabel"
             aria-hidden="true">
             <div class="modal-dialog modal-lg">
@@ -231,92 +242,100 @@ export default {
             loading: false
         };
     },
+
     mounted() {
         this.loadWorkspaces();
     },
+
     methods: {
-        loadWorkspaces() {
-            axios.get('http://127.0.0.1:8000/api/workspace/get-data', {
-                headers: {
-                    Authorization: 'Bearer ' + localStorage.getItem('token_client')
-                }
-            })
-                .then((res) => {
-                    if (res.data.status) {
-                        // gán dữ liệu từ API
-                        this.workspaces = res.data.data;
-                        this.totalTasks = res.data.total_tasks;
-                        this.myTasks = res.data.my_tasks;
-                        this.overdueTasks = res.data.overdue_tasks;
-                        this.inProgressTasks = res.data.in_progress_tasks;
-                        this.completedWorkspaes = res.data.completed_wordkspaces;
-                        this.username = res.data.user.username;
-                    } else {
-                        this.$toast.error(res.data.message);
+        async loadWorkspaces() {
+            try {
+                const res = await axios.get('http://127.0.0.1:8000/api/workspace/get-data', {
+                    headers: {
+                        Authorization: 'Bearer ' + localStorage.getItem('token_client')
                     }
-                })
-                .catch(() => {
-                    this.$toast.error('Lỗi khi tải dữ liệu');
                 });
+
+                if (res.data.status) {
+                    this.workspaces = res.data.data;
+                    this.totalTasks = res.data.total_tasks;
+                    this.myTasks = res.data.my_tasks;
+                    this.overdueTasks = res.data.overdue_tasks;
+                    this.inProgressTasks = res.data.in_progress_tasks;
+                    this.completedWorkspaces = res.data.completed_workspaces;
+                    this.username = res.data.user.username;
+                } else {
+                    this.$toast.error(res.data.message);
+                }
+            } catch {
+                this.$toast.error('Lỗi khi tải dữ liệu');
+            }
         },
 
         showEditModal(workspace) {
             this.isEditing = true;
             this.formData = { ...workspace };
         },
-        removeWorkspace(id) {
-            if (confirm('Bạn có chắc muốn xóa dự án này?')) {
-                axios.post('http://127.0.0.1:8000/api/workspace/delete', { id }, {
+
+        async removeWorkspace(id) {
+            if (!confirm('Bạn có chắc muốn xóa dự án này?')) return;
+
+            try {
+                const res = await axios.post('http://127.0.0.1:8000/api/workspace/delete', { id }, {
                     headers: {
                         Authorization: 'Bearer ' + localStorage.getItem('token_client')
                     }
-                })
-                    .then((res) => {
-                        if (res.data.status) {
-                            this.$toast.success(res.data.message);
-                            this.loadWorkspaces();
-                        } else {
-                            this.$toast.error(res.data.message);
-                        }
-                    })
-                    .catch(() => {
-                        this.$toast.error('Lỗi khi xóa dự án');
-                    });
+                });
+
+                if (res.data.status) {
+                    this.$toast.success(res.data.message);
+                    this.loadWorkspaces();
+                } else {
+                    this.$toast.error(res.data.message);
+                }
+            } catch {
+                this.$toast.error('Lỗi khi xóa dự án');
             }
         },
-        saveWorkspace() {
+
+        async saveWorkspace() {
             this.loading = true;
             const url = this.isEditing
                 ? 'http://127.0.0.1:8000/api/workspace/update'
                 : 'http://127.0.0.1:8000/api/workspace/add-data';
             const method = this.isEditing ? 'put' : 'post';
 
-            axios[method](url, this.formData, {
-                headers: {
-                    Authorization: 'Bearer ' + localStorage.getItem('token_client')
-                }
-            })
-                .then((res) => {
-                    if (method == 'post') {
-                        this.$router.push("/teamanager").then(() => location.reload());
+            try {
+                const res = await axios[method](url, this.formData, {
+                    headers: {
+                        Authorization: 'Bearer ' + localStorage.getItem('token_client')
                     }
-                    if (res.data.status) {
-                        this.$toast.success(res.data.message);
-                        this.loadWorkspaces();
-                    } else {
-                        this.$toast.error(res.data.message);
-                    }
-                })
-                .catch(() => {
-                    this.$toast.error('Lỗi khi lưu dự án');
-                })
-                .finally(() => {
-                    this.loading = false;
                 });
+
+                if (res.data.status) {
+                    this.$toast.success(res.data.message);
+
+                    if (method === 'post' && res.data.data) {
+                        // lưu id workspace mới nhất
+                        localStorage.setItem('latestWorkspaceId', res.data.data.id);
+                        // thêm workspace mới vào danh sách ngay
+                        this.workspaces.push(res.data.data);
+                    }
+
+                    this.loadWorkspaces();
+                } else {
+                    this.$toast.error(res.data.message);
+                }
+            } catch {
+                this.$toast.error('Lỗi khi lưu dự án');
+            } finally {
+                this.loading = false;
+            }
         }
     }
 };
 </script>
+
 <style>
 .text-purple {
     color: #9966ff;
