@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\ClientController;
 use App\Http\Controllers\MemberController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\WorkspaceController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -29,3 +30,13 @@ Route::prefix('/member')->group(function () {
 });
 
 Route::get('/workspace-role/get-data', [MemberController::class, 'getDataWorkSpaceRole']);
+
+Route::prefix('task')->group(function () {
+    Route::get('/get-data', [TaskController::class, 'getData']);
+    Route::post('/add-data', [TaskController::class, 'addData']);
+    Route::put('/update', [TaskController::class, 'update']);
+    Route::put('/move', [TaskController::class, 'move']);
+    Route::post('/delete', [TaskController::class, 'destroy']);
+});
+
+Route::post('/board/add', [TaskController::class, 'addBoard']);

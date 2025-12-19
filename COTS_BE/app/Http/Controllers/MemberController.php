@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Http\Requests\AddTeamanagerRequest;
-use App\Http\Requests\DeleteTeamanagerRequest;
-use App\Http\Requests\UpdateTeamanagerRequest;
 use App\Models\User;
 use App\Models\WorkspaceMember;
 use App\Models\WorkspaceRole;
@@ -104,33 +101,40 @@ class MemberController extends Controller
             'data'   => $data
         ]);
     }
-    public function addData(AddTeamanagerRequest $request)
+    public function addData(Request $request)
     {
-        // 1. Lấy User hiện tại
         $currentUser = Auth::guard('sanctum')->user();
-        $workspaceId = $request->workspace_id;
+        // 1. Validate dữ liệu đầu vào
+        $data = $request->validate([
+            'workspace_id' => 'required|integer|exists:workspaces,id',
+            'name'         => 'required|string|max:255',
+            'email'        => 'required|email|max:255',
+            'role'         => 'required|integer|exists:workspace_roles,id', // Nhận ID thay vì Name
+        ]);
 
-        // [BẢO MẬT] Kiểm tra quyền mời
+        $workspaceId = $data['workspace_id'];
+
+        // [BẢO MẬT] Kiểm tra: Người mời có quyền trong Workspace này không?
         $hasAccess = WorkspaceMember::where('workspace_id', $workspaceId)
             ->where('user_id', $currentUser->id)
-            ->exists();
+            ->exists(); // (Nâng cao: Nên check thêm role_id phải là Admin/Owner mới được mời)
 
         if (!$hasAccess) {
-            return response()->json(['status' => false, 'message' => 'Bạn không có quyền mời thành viên.'], 403);
+            return response()->json(['status' => false, 'message' => 'Bạn không có quyền mời thành viên vào Workspace này.'], 403);
         }
 
-        // 2. Tìm User theo Email
-        $user = User::where('email', $request->email)->first();
+        // 2. Xử lý User: Tìm hoặc Tạo mới
+        $user = User::firstOrCreate(
+            ['email' => $data['email']],
+            [
+                'name'           => $data['name'],
+                'password'       => Hash::make('123456'), // Mật khẩu mặc định
+                'system_role_id' => 3, // Giả sử 3 là User thường
+                'status_id'      => 1
+            ]
+        );
 
-        // Nếu KHÔNG tìm thấy user -> Báo lỗi
-        if (!$user) {
-            return response()->json([
-                'status' => false,
-                'message' => 'Không tìm thấy người dùng nào với email này.'
-            ], 404);
-        }
-
-        // 3. Kiểm tra trùng lặp
+        // 3. Kiểm tra trùng lặp: Đã là thành viên chưa?
         $exists = WorkspaceMember::where('workspace_id', $workspaceId)
             ->where('user_id', $user->id)
             ->exists();
@@ -143,11 +147,12 @@ class MemberController extends Controller
         $newMember = WorkspaceMember::create([
             'workspace_id' => $workspaceId,
             'user_id'      => $user->id,
-            'role_id'      => $request->role,
+            'role_id'      => $data['role'], // Lưu trực tiếp ID nhận từ Vue
             'joined_at'    => now()
         ]);
 
-        // 5. Trả dữ liệu
+        // 5. Trả dữ liệu về Frontend
+        // Load lại relationship role để lấy tên hiển thị
         $newMember->load('role');
 
         return response()->json([
@@ -155,41 +160,55 @@ class MemberController extends Controller
             'message' => 'Thêm thành viên thành công',
             'data'    => [
                 'id'        => $user->id,
-                'member_id' => $newMember->id,
                 'name'      => $user->name,
                 'email'     => $user->email,
-                'role'      => $newMember->role_id,
-                'role_name' => $newMember->role ? $newMember->role->name : 'Member',
+                'role'      => $newMember->role_id, // Trả về ID cho modal edit
+                'role_name' => $newMember->role ? $newMember->role->name : 'Member', // Trả về Tên cho badge hiển thị
                 'avatar'    => "https://ui-avatars.com/api/?name=" . urlencode($user->name) . "&background=random&color=fff",
             ]
         ]);
     }
-
-    public function updateData(UpdateTeamanagerRequest $request)
+    public function updateData(Request $request)
     {
-        // 1. Lấy User hiện tại
+        // 1. Lấy User hiện tại qua Sanctum
         $currentUser = Auth::guard('sanctum')->user();
 
+        // Kiểm tra đăng nhập
         if (!$currentUser) {
-            return response()->json(['status' => false, 'message' => 'Lỗi xác thực: Vui lòng đăng nhập lại.'], 401);
+            return response()->json([
+                'status' => false,
+                'message' => 'Lỗi xác thực: Vui lòng đăng nhập lại.',
+            ], 401);
         }
-        $workspaceId = $request->workspace_id;
-        $targetUserId = $request->id; // ID user cần sửa
 
-        // 2. [BẢO MẬT] Kiểm tra quyền truy cập của người thực hiện
+        // 2. Validate dữ liệu
+        $data = $request->validate([
+            'workspace_id' => 'required|integer|exists:workspaces,id',
+            'id'           => 'required|integer|exists:users,id', // ID của User cần sửa
+            'role'         => 'required|integer|exists:workspace_roles,id',
+        ]);
+
+        $workspaceId = $data['workspace_id'];
+        $targetUserId = $data['id'];
+
+        // 3. [BẢO MẬT] Kiểm tra: User đang login có thuộc Workspace này không?
         $hasAccess = WorkspaceMember::where('workspace_id', $workspaceId)
             ->where('user_id', $currentUser->id)
             ->exists();
 
         if (!$hasAccess) {
-            return response()->json(['status' => false, 'message' => 'Bạn không có quyền thực hiện hành động này.'], 403);
+            return response()->json([
+                'status' => false,
+                'message' => 'Bạn không có quyền thực hiện hành động này.'
+            ], 403);
         }
 
-        // 3. Thực hiện Update
+        // 4. Thực hiện Update (Chỉ update role_id)
+        // Vì đã set public $timestamps = false trong Model, lệnh này sẽ chạy ngon lành.
         WorkspaceMember::where('workspace_id', $workspaceId)
             ->where('user_id', $targetUserId)
             ->update([
-                'role_id' => $request->role
+                'role_id' => $data['role']
             ]);
 
         return response()->json([
@@ -197,8 +216,7 @@ class MemberController extends Controller
             'message' => 'Cập nhật quyền thành công'
         ]);
     }
-
-    public function destroyData(DeleteTeamanagerRequest $request)
+    public function destroyData(Request $request)
     {
         $currentUser = Auth::guard('sanctum')->user();
 
@@ -206,8 +224,13 @@ class MemberController extends Controller
             return response()->json(['status' => false, 'message' => 'Vui lòng đăng nhập lại.'], 401);
         }
 
-        $workspaceId = $request->workspace_id;
-        $targetUserId = $request->id; // User ID cần xóa
+        $data = $request->validate([
+            'workspace_id' => 'required|integer|exists:workspaces,id',
+            'id'           => 'required|integer', // User ID cần xóa
+        ]);
+
+        $workspaceId = $data['workspace_id'];
+        $targetUserId = $data['id'];
 
         // [BẢO MẬT] Check quyền người thực hiện
         $hasAccess = WorkspaceMember::where('workspace_id', $workspaceId)

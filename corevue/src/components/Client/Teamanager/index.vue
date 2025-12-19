@@ -100,7 +100,7 @@
                 </td>
               </tr>
 
-              <tr v-else v-for="(member, index) in list_members" :key="member.id" class="border-bottom">
+              <tr v-else v-for="(member, index) in list_members" :key="index" class="border-bottom">
                 <td class="pl-4 py-3 align-middle">
                   <div class="d-flex align-items-center">
                     <div class="avatar-circle shadow-sm mr-3 border border-white"
@@ -150,11 +150,15 @@
           <div class="modal-body">
             <form @submit.prevent="inviteData">
               <div class="form-group">
+                <label class="small font-weight-bold text-muted">Full Name</label>
+                <input v-model="add_member.name" type="text" class="form-control" placeholder="e.g. John Doe"
+                  required />
+              </div>
+              <div class="form-group">
                 <label class="small font-weight-bold text-muted">Email Address</label>
                 <input v-model="add_member.email" type="email" class="form-control" placeholder="name@company.com"
                   required />
               </div>
-
               <div class="form-group">
                 <label class="small font-weight-bold text-muted">Role</label>
                 <select v-model="add_member.role" class="form-control">
@@ -335,7 +339,7 @@ export default {
         });
     },
 
-   deleteData() {
+    deleteData() {
       const payload = { ...this.del_member, workspace_id: this.workspace_id };
 
       axios
@@ -351,22 +355,7 @@ export default {
           }
         })
         .catch((err) => {
-          if (err.response) {
-            // Trường hợp 1: Lỗi Validation (Form Request trả về)
-            if (err.response.data && err.response.data.errors) {
-              Object.values(err.response.data.errors).forEach((e) => this.$toast.error(e[0]));
-            } 
-            // Trường hợp 2: Lỗi Logic (403 cấm quyền, 400 lỗi tự xóa...)
-            else if (err.response.data && err.response.data.message) {
-              this.$toast.error(err.response.data.message);
-            } 
-            // Trường hợp 3: Lỗi server khác
-            else {
-              this.$toast.error("Đã có lỗi xảy ra, vui lòng thử lại.");
-            }
-          } else {
-            this.$toast.error("Không thể kết nối đến máy chủ.");
-          }
+          this.$toast.error("Không thể xóa member này hoặc lỗi server.");
         });
     },
 
@@ -386,17 +375,10 @@ export default {
           }
         })
         .catch((err) => {
-          if (err.response) {
-            // Ưu tiên hiện lỗi Validation chi tiết
-            if (err.response.data && err.response.data.errors) {
-              Object.values(err.response.data.errors).forEach((e) => this.$toast.error(e[0]));
-            } 
-            // Hiện lỗi Message (ví dụ: Không có quyền)
-            else if (err.response.data && err.response.data.message) {
-              this.$toast.error(err.response.data.message);
-            } else {
-              this.$toast.error("Lỗi khi cập nhật thông tin.");
-            }
+          if (err.response && err.response.data && err.response.data.errors) {
+            Object.values(err.response.data.errors).forEach(e => this.$toast.error(e[0]));
+          } else {
+            this.$toast.error("Lỗi khi cập nhật");
           }
         });
     },
@@ -411,25 +393,17 @@ export default {
         .then((res) => {
           if (res.data.status) {
             this.$toast.success(res.data.message);
-            // Reset form chỉ khi thành công
-            this.add_member = { email: "", role: 3 };
+            this.add_member = { name: "", email: "", role: 3 };
             this.loadData();
           } else {
             this.$toast.error(res.data.message);
           }
         })
         .catch((err) => {
-          if (err.response) {
-            // Lỗi Validation (VD: Email sai định dạng)
-            if (err.response.data && err.response.data.errors) {
-              Object.values(err.response.data.errors).forEach((e) => this.$toast.error(e[0]));
-            } 
-            // Lỗi Message (VD: Không tìm thấy người dùng này - 404)
-            else if (err.response.data && err.response.data.message) {
-              this.$toast.error(err.response.data.message);
-            } else {
-              this.$toast.error("Lỗi khi mời thành viên.");
-            }
+          if (err.response && err.response.data && err.response.data.errors) {
+            Object.values(err.response.data.errors).forEach(e => this.$toast.error(e[0]));
+          } else {
+            this.$toast.error("Lỗi khi thêm thành viên");
           }
         });
     },
@@ -528,23 +502,19 @@ export default {
   font-weight: 600;
   text-transform: uppercase;
 }
-
 /* 2. Style cho Table Row */
 .table th {
   border-top: none;
   background-color: #f8f9fa;
   /* Màu nền header nhạt */
 }
-
 .table td {
   vertical-align: middle;
 }
-
 .table-hover tbody tr:hover {
   background-color: #fcfcfc;
   /* Hiệu ứng hover rất nhẹ */
 }
-
 /* 3. Button Icon tròn */
 .btn-icon {
   width: 32px;
@@ -555,14 +525,12 @@ export default {
   justify-content: center;
   transition: all 0.2s;
 }
-
 .btn-icon:hover {
   background-color: #fee2e2;
   /* Màu đỏ rất nhạt khi hover nút xóa */
   color: #dc2626 !important;
   transform: scale(1.05);
 }
-
 /* 4. SOFT BADGES (Màu Pastel hiện đại) */
 /* Badge cho Admin/Owner */
 .badge-soft-purple {
@@ -570,71 +538,59 @@ export default {
   color: #7e22ce;
   border: 1px solid transparent;
 }
-
 .badge-soft-purple:hover {
   background-color: #7e22ce;
   color: white;
   cursor: pointer;
 }
-
 /* Badge cho Scrum Master */
 .badge-soft-warning {
   background-color: #fef3c7;
   color: #b45309;
   border: 1px solid transparent;
 }
-
 .badge-soft-warning:hover {
   background-color: #b45309;
   color: white;
   cursor: pointer;
 }
-
 /* Badge cho Member */
 .badge-soft-primary {
   background-color: #e0f2fe;
   color: #0369a1;
   border: 1px solid transparent;
 }
-
 .badge-soft-primary:hover {
   background-color: #0369a1;
   color: white;
   cursor: pointer;
 }
-
 /* Badge cho Viewer/Khác */
 .badge-soft-secondary {
   background-color: #f3f4f6;
   color: #4b5563;
   border: 1px solid #e5e7eb;
 }
-
 /* Tiện ích */
 .cursor-pointer {
   cursor: pointer;
 }
-
 .rounded-lg {
   border-radius: 0.5rem !important;
 }
-
 .transition-base {
   transition: all 0.2s ease-in-out;
 }
-
 /* Màu nền đỏ nhạt cho icon cảnh báo */
 .bg-danger-subtle {
   background-color: #fee2e2;
   /* Màu đỏ rất nhạt */
 }
-
 /* Hiệu ứng hover cho nút Cancel */
 .btn-light:hover {
   background-color: #e5e7eb;
   color: #1f2937;
 }
-
 /* Đảm bảo modal nằm giữa đẹp hơn */
 .modal-content {
   border-radius: 0.5rem;

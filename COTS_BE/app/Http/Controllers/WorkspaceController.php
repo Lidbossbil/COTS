@@ -82,7 +82,7 @@ class WorkspaceController extends Controller
             'description' => 'nullable|string',
         ]);
 
-        Workspace::create([
+        $workspace = Workspace::create([
             'name'        => $validated['name'],
             'description' => $validated['description'] ?? '',
             'created_by'  => $user->id,
@@ -91,8 +91,10 @@ class WorkspaceController extends Controller
         return response()->json([
             'status'  => true,
             'message' => 'Tạo workspace thành công',
+            'data'    => $workspace   
         ]);
     }
+
 
     public function update(Request $request)
     {
@@ -155,7 +157,14 @@ class WorkspaceController extends Controller
             ], 403);
         }
 
-        Workspace::where('id', $request->id)->delete();
+        // Nếu có boards/tasks liên kết, cần xoá cascade hoặc xử lý trước
+        foreach ($workspace->boards as $board) {
+            $board->tasks()->delete();
+            $board->delete();
+        }
+
+        $workspace->delete();
+
         return response()->json([
             'status'  => true,
             'message' => 'Xóa workspace thành công',
