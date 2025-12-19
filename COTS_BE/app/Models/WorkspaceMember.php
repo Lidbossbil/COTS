@@ -8,6 +8,8 @@ class WorkspaceMember extends Model
 {
     protected $table = 'workspace_members';
 
+    public $timestamps = false;
+    
     // Các cột cho phép gán dữ liệu hàng loạt
     protected $fillable = [
         'workspace_id',
